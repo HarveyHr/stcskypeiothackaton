@@ -1,23 +1,20 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-const { ActivityTypes } = require('botbuilder');
 const _ = require('lodash');
 
+const { ActivityTypes } = require('botbuilder');
 const CosmosClient = require("@azure/cosmos").CosmosClient;
 
-// Turn counter property
-const TURN_COUNTER_PROPERTY = 'turnCounterProperty';
+// const SENSORS = ['temperature'];
+// const DEVICES = ['kitchen', 'living_room'];
 
-const SENSORS = ['temperature'];
-const DEVICES = ['kitchen', 'living_room'];
-
-const config = {};
-
-config.host = process.env.HOST || "https://nodbskypeiothack.documents.azure.com:443/";
-config.authKey = process.env.AUTH_KEY || "XXJp9kRNbq7oqGC42gFBO1VL6BpZWqMMfoJeTiOHrZIrXPyxL5lQ6BnLWX9uayWMfj6CN5p3kAHWrL5L8AuXtg==";
-config.databaseId = "nodbskypeiothack";
-// config.containerId = "";
+const config = {
+  host: "https://nodbskypeiothack.documents.azure.com:443/",
+  authKey: "XXJp9kRNbq7oqGC42gFBO1VL6BpZWqMMfoJeTiOHrZIrXPyxL5lQ6BnLWX9uayWMfj6CN5p3kAHWrL5L8AuXtg==",
+  databaseId: "skypeSens",
+  containerId: "iotIn",
+};
 
 const cosmosClient = new CosmosClient({
   endpoint: config.host,
@@ -34,8 +31,8 @@ class MyBot {
   constructor(conversationState) {
     // Creates a new state accessor property.
     // See https://aka.ms/about-bot-state-accessors to learn more about the bot state and state accessors.
-    this.countProperty = conversationState.createProperty(TURN_COUNTER_PROPERTY);
-    this.conversationState = conversationState;
+    // this.countProperty = conversationState.createProperty(TURN_COUNTER_PROPERTY);
+    // this.conversationState = conversationState;
   }
   /**
    *
@@ -48,19 +45,26 @@ class MyBot {
       //const inputMsg = turnContext.activity.text;
       // const { device, sensor } = _.split(inputMsg, ' ');
 
-      const [device, sensor] = [_.first(DEVICES), _.first(SENSORS)];
-      const valueFromDeviceAndSensor = await this.getValueFromDeviceAndSensor(device, sensor);
-
-      await turnContext.sendActivity(`${device} ${sensor} ${valueFromDeviceAndSensor}`);
+      // const [device, sensor] = [_.first(DEVICES), _.first(SENSORS)];
+      const result = await this.getValueFromDeviceAndSensor();
+      await turnContext.sendActivity(`Temperature: ${result.t} Lux: ${result.lux}`);
     } else {
       await turnContext.sendActivity(`[${turnContext.activity.type} event detected]`);
     }
     // Save state changes
-    await this.conversationState.saveChanges(turnContext);
+    // await this.conversationState.saveChanges(turnContext);
   }
 
-  async getValueFromDeviceAndSensor(string device, string sensor) {
-    return 25;
+  async getValueFromDeviceAndSensor() {
+    const container = cosmosClient.database(config.databaseId).container(config.containerId);
+
+    const items = await container.items.query("SELECT * FROM c", { maxItemCount: 1 });
+    items.current().then((item) => {
+      const t = _.get(item.result, 't');
+      const l = _.get(item.result, 'l');
+
+      return { temperature: t, lux: l };
+    });
   }
 }
 

@@ -24,6 +24,10 @@ console.log("init");
     allDatabases.forEach((result) => {
       console.log(result);
     });
+
+    console.log("select database - skypeSens");
+    await cosmosClient.databases.
+
   } catch (e) {
     console.error("ERROR");
     console.error(e);
